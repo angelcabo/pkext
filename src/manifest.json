@@ -1,6 +1,9 @@
 {
   "name": "Perkeep Browser Extension",
-  "options_page": "options.html",
+  "options_ui": {
+    "page": "options.html",
+    "chrome_style": false
+  },
   "background": {
     "page": "background.html"
   },
@@ -12,5 +15,10 @@
     "128": "icon-128.png"
   },
   "manifest_version": 2,
-  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+  "permissions": [
+    "<all_urls>",
+    "history",
+    "storage"
+  ]
 }
