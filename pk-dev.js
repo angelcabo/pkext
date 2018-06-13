@@ -3,43 +3,36 @@ const axios = require('axios');
 const qs = require('qs');
 const FormData = require('form-data');
 const SHA224 = require('crypto-js/sha224');
+const url = require('url');
 
 const Perkeep = stampit({
   conf: {
+    auth: {
+      username: 'devcam',
+      password: 'pass3179'
+    },
     host: 'http://localhost:3179',
     root: 'History'
   },
-  init: ({host, root}, { stamp, instance }) => {
+  init: ({auth, host, root}, { stamp, instance }) => {
     // console.log(stamp.compose.configuration);
     // this.disoveryConfig = stamp.compose.configuration.discovery;
 
+    this.auth = auth || stamp.compose.configuration.auth;
     this.host = host || stamp.compose.configuration.host;
     this.root = root || stamp.compose.configuration.root;
 
     // console.log(stamp.compose.configuration);
 
-    instance.createPermanode = async (attrs) => {
-      let json = {
-        "camliVersion": 1,
-        "camliType": "permanode",
-        "random": "" + Math.random()
-      };
-      let signature = await instance.signObject(json);
-      let permanodeRef = await instance.nodeUploadSignature(signature);
-      let updateAttrRequests = [];
-      for(let key in attrs){
-        if (attrs.hasOwnProperty(key)) {
-          updateAttrRequests.push(instance.updatePermanodeAttr(permanodeRef, "set-attribute", key, attrs[key]))
-        }
-      }
-      await Promise.all(updateAttrRequests);
-      return Object.assign(attrs, { permanodeRef });
-      // return this.SIGN_HANDLER;
-    };
-
     instance.discover = async () => {
-      try { 
-        let response = await axios.get(this.host, {headers: {'Accept': 'text/x-camli-configuration'}});
+      try {
+        const options = {
+          method: 'GET',
+          headers: { 'Accept': 'text/x-camli-configuration' },
+          url: this.host,
+          auth: this.auth
+        };
+        let response = await axios(options);
         console.log(`retrieved camlistore server discovery data from ${this.host}`);
         this.disoveryConfig = response.data;
 
@@ -61,6 +54,40 @@ const Perkeep = stampit({
       }
     };
 
+    instance.createPermanode = async (attrs) => {
+      let json = {
+        "camliVersion": 1,
+        "camliType": "permanode",
+        "random": "" + Math.random()
+      };
+      let signature = await instance.signObject(json);
+      let permanodeRef = await instance.nodeUploadSignature(signature);
+      let updateAttrRequests = [];
+      for(let key in attrs){
+        if (attrs.hasOwnProperty(key)) {
+          updateAttrRequests.push(instance.updatePermanodeAttr(permanodeRef, "set-attribute", key, attrs[key]))
+        }
+      }
+      await Promise.all(updateAttrRequests);
+      return Object.assign(attrs, { permanodeRef });
+      // return this.SIGN_HANDLER;
+    };
+
+    instance.updatePermanodeAttr = async (blobref, claimType, attribute, value) => {
+      let json = {
+        "camliVersion": 1,
+        "camliType": "claim",
+        "permaNode": blobref,
+        "claimType": claimType,
+        "claimDate": instance.dateToRfc3339String(new Date()),
+        "attribute": attribute,
+        "value": value
+      };
+
+      let signature = await instance.signObject(json);
+      return instance.nodeUploadSignature(signature);
+    };
+
     instance.signObject = async (clearObj) => {
       clearObj.camliSigner = this.PUBLIC_KEY_BLOB_REF;
 
@@ -79,25 +106,11 @@ const Perkeep = stampit({
         headers: { 'content-type': 'application/x-www-form-urlencoded' },
         data: "json=" + encodeURIComponent(clearText),
         url: this.SIGN_HANDLER,
+        auth: this.auth,
         transformResponse: undefined
       };
       let response = await axios(options);
       return response.data;
-    };
-
-    instance.updatePermanodeAttr = async (blobref, claimType, attribute, value) => {
-      let json = {
-        "camliVersion": 1,
-        "camliType": "claim",
-        "permaNode": blobref,
-        "claimType": claimType,
-        "claimDate": instance.dateToRfc3339String(new Date()),
-        "attribute": attribute,
-        "value": value
-      };
-
-      let signature = await instance.signObject(json);
-      return instance.nodeUploadSignature(signature);
     };
 
     instance.nodeUploadSignature = async (s) => {
@@ -106,7 +119,7 @@ const Perkeep = stampit({
       form.append(blobref, new Buffer(s));
 
       return new Promise(function (resolve, reject) {
-        form.submit({auth: 'devcam:pass3179', host: 'perkeep.test', path: '/bs-recv/camli/upload'}, function(err, res) {
+        form.submit({auth: `${this.auth.username}:${this.auth.password}`, host: url.parse(this.host).hostname, path: this.uploadHandler_}, function(err, res) {
           if (err) reject(err);
           let body = '';
           res.on("data", function(chunk) {
@@ -130,16 +143,15 @@ const Perkeep = stampit({
       return response.received[0].blobRef;
     };
 
-    instance.findPermanode = async (query) => {
-      return axios.post(this.SEARCH_ROOT + 'camli/search/query', query, {headers: {'Content-Type': 'application/json'}})
-        .then(function (response) {
-          return response.data.blobs;
-        });
-    };
-
     instance.search = async (query) => {
-      return axios.post(this.SEARCH_ROOT + 'camli/search/query', query, {headers: {'Content-Type': 'application/json'}})
-        .then(function (response) {
+      const options = {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        data: query,
+        url: this.SEARCH_ROOT,
+        auth: this.auth
+      };
+      return axios(options).then(function (response) {
           return response.data.blobs;
         });
     };
@@ -174,16 +186,6 @@ const Perkeep = stampit({
       return formatted;
     }
   }
-  // statics: {
-  //   async discover(host) {
-  //     try { let response = await axios.get(host, {headers: {'Accept': 'text/x-camli-configuration'}});
-  //       console.log(`retrieved camlistore server discovery data from ${host}`);
-  //       return this.conf({discovery: response.data});
-  //     } catch(e) {
-  //       console.log(e);
-  //     }
-  //   }
-  // }
 });
 
 // Perkeep = Perkeep.compose({
@@ -230,7 +232,11 @@ const Perkeep = stampit({
 // });
 
 const config = {
-  host: `http://devcam:pass3179@perkeep.test`,
+  auth: {
+    username: 'devcam',
+    password: 'pass3179'
+  },
+  host: `http://perkeep.test`,
   root: 'History'
 };
 
@@ -239,10 +245,9 @@ let pk = Perkeep(config);
 pk.discover().then(function () {
   const createPermanode = async () => {
     try {
-      // await pk.print();
-      const { permanodeId } = await pk.createPermanode({title: 'My Title'});
-      console.log(`Saved ${permanodeId}`);
-      return permanodeId;
+      const { permanodeRef } = await pk.createPermanode({title: 'My Title'});
+      console.log(`Saved ${permanodeRef}`);
+      return permanodeRef;
     } catch(e) {
       console.log(e)
     }
