@@ -1,10 +1,10 @@
 import "../css/options.css";
-import Server from "./options/server.jsx";
+import ServerConfiguration from "./options/ServerConfiguration.jsx";
 import React from "react";
 import { render } from "react-dom";
 
 render(
-  <Server/>,
+  <ServerConfiguration/>,
   window.document.getElementById("options-container")
 );
 

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import Connection from './connection.js'
+import Permanode from './permanode.js'
 
 export default class Manager {
   constructor(connection, options) {
@@ -34,4 +35,34 @@ export default class Manager {
       return {blobRef: root.blobRef, rootName: root.permanode.attr.camliRoot[0]};
     });
   }
+
+  createNewPermanodeOnRoot() {
+
+  }
+
+  findBookmarkOnRoot() {
+
+  }
+
+  /*
+  {
+
+   */
+  findOrCreatePermanode(attrs) {
+    let self = this;
+    let url = new URL(attrs.url);
+    let encodedUrl = btoa(url.hostname.replace('www.', '') + url.pathname);
+
+    return this.findBookmarkOnRoot(this.rootPermanodeRef, encodedUrl)
+      .then(function (result) {
+        if (result) {
+          return result;
+        } else {
+          return self.createNewPermanodeOnRoot(attrs.url, attrs.title, encodedUrl)
+            .then(function () {
+              return self.findBookmarkOnRoot(self.rootPermanodeRef, encodedUrl);
+            });
+        }
+      });
+  };
 }

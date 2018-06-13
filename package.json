@@ -1,15 +1,22 @@
 {
   "name": "pkext",
-  "version": "1.0",
+  "version": "1.0.0",
   "description": "A browser extension for pushing browsing data to Perkeep",
   "scripts": {
     "build": "node utils/build.js",
-    "start": "node utils/webserver.js"
+    "start": "node utils/webserver.js",
+    "pk": "node $NODE_DEBUG_OPTION pk-dev.js",
+    "dev": "node dev.js"
   },
   "dependencies": {
     "react": "^16.4.0",
     "react-dom": "^16.4.0",
-    "axios": "^0.18.0"
+    "axios": "^0.18.0",
+    "stampit": "^4.1.2",
+    "@stamp/required": "^1.0.1",
+    "qs": "^6.5.2",
+    "crypto-js": "^3.1.9-1",
+    "form-data": "^2.3.2"
   },
   "devDependencies": {
     "babel-core": "^6.17.0",

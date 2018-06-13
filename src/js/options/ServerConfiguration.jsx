@@ -2,7 +2,7 @@ import React from "react";
 import {hot} from "react-hot-loader";
 import Perkeep from '../perkeep/manager.js'
 
-class ServerComponent extends React.Component {
+class ServerConfiguration extends React.Component {
 
   constructor(props) {
     super(props);
@@ -145,4 +145,4 @@ class ServerComponent extends React.Component {
   }
 }
 
-export default hot(module)(ServerComponent)
+export default hot(module)(ServerConfiguration)
