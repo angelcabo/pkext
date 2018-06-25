@@ -242,6 +242,16 @@ const config = {
 
 let pk = Perkeep(config);
 
+// Executed when Chrome starts (per profile)
+chrome.runtime.onStartup.addListener(function() {
+  // store discovery config in local storage
+  pk.discover().then(function (discoveryConfig) {
+    chrome.storage.local.set({ discoveryConfig });
+  });
+
+  // todo: If we fail to discover server, add alert notification or icon to allow user to select new server
+});
+
 pk.discover().then(function () {
   const createPermanode = async () => {
     try {
