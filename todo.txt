@@ -1,0 +1,208 @@
+
+# CONFIGURATION
+
+Search for a root node that holds our configuration and will be used to attach browsing history:
+let name = "Browsing History" // Specified by user
+let findRootByName = {
+  "constraint": {
+  	"permanode": {
+  		"attr": "camliRoot",
+  		"value": name
+  	}
+  },
+  "describe": {
+  	"ifResultRoot": true
+  }
+}
+
+let describeAllChildrenOfRoot = {
+                                  "sort": "-created",
+                                  "expression": "childrenof:sha1-2158e19da3fb483a26fe943439995aabd3609dbe",
+                                  "describe": {
+                                    "rules": [
+                                      {
+                                        "attrs": [
+                                          "camliPath:*"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                }
+
+let findExistingBookmarkQuery = {
+              "sort": "-created",
+              "constraint": {
+                "logical": {
+                  "op": "and",
+                  "a": {
+                    "permanode": {
+                      "attr": "base64url",
+                      "value": "abc123"
+                    }
+                  },
+                  "b": {
+                    "permanode": {
+                      "relation": {
+                        "relation": "parent",
+                        "any": {
+                          "blobRefPrefix": "sha1-2158e19da3fb483a26fe943439995aabd3609dbe"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "describe": {
+                "rules": [
+                  {
+                    "attrs": [
+                      "camliContent",
+                      "camliContentImage"
+                    ]
+                  }
+                ]
+              }
+            }
+
+if exists?
+    get configuration values for the node from the response
+
+* Query for root node to store browsing history
+* The root node should have a digest
+
+
+// camliPath for webpage visits is set using a base64 encoding of the full URL minus any query params
+"root": {
+  "camliType": "permanode",
+  "camliPath:aHR0cHM6Ly9lbi53aWtpcGVkaWEub3JnL3dpa2kvVVJMX25vcm1hbGl6YXRpb24=": "sha1-xxxxxxx"
+}
+
+// Create new browsing history item
+"sha1-xxxxxxx": {
+  "camliType": "permanode",
+  "camliContent": "sha1-yyyyyyy", // represent MTHML
+  "camliContentImage": "sha1-zzzzzzz", // represents screen capture thumbnail
+  "title": "Title",
+  "tag": "foo,bar,buzz",
+  "description": "This is my description"
+  "perkeep-ext:visited": "2010-07-10T17:20:03.9212Z"
+}
+
+// Optional: upload MHTML content of page
+1. Upload raw blob representing mthml (first, check if it exists)
+2. Upload set-attribute claim on existing browsing history item camliContent
+
+// Optional: re-set history screen thumbnail
+1. Upload new raw image blob representing screen capture
+2. Upload set-attribute claim on existing browsing history item camliContent
+
+{
+  "camliVersion": 1,
+  "camliType": "claim",
+  "camliSigner": "....",
+  "claimDate": "2010-07-10T17:20:03.9212Z",
+  "permaNode": "sha1-xxxxxxx",
+  "claimType": "set-attribute",
+  "attribute": "camliContent",
+  "value": "sha1-wwwwwww",
+  "camliSig": "........."
+}
+
+// Update history on each page visit
+
+Upload new set-attribute claim to set last visited date on history item
+
+{
+  "camliVersion": 1,
+  "camliType": "claim",
+  "camliSigner": "....",
+  "claimDate": "2010-07-10T17:20:03.9212Z",
+  "permaNode": "sha1-xxxxxxx",
+  "claimType": "set-attribute",
+  "attribute": "perkeep-ext:visited",
+  "value": "2010-07-10T17:20:03.9212Z",
+  "camliSig": "........."
+}
+
+// save highlighted text, images or other media from the page:
+ 1. upload raw blob of either text or image
+ {bytes || file || image}
+ 2. create permanode with camlimember set to parent webpage
+"sha1-....": {
+  "camliType": "permanode",
+  "camliContent": "sha1-yyyyyyy", // represent MTHML
+  "camliContentImage": "sha1-zzzzzzz", // represents screen capture thumbnail
+  "camliMember": "sha1-xxxxxxx"
+}
+
+NOTES:
+* Monitor https://github.com/perkeep/perkeep/issues/1041 to optimize multi claim updates
+
+* Use https://github.com/brix/crypto-js for sha1 and sha2 signing
+
+* Should have an app that helps to manage browsing history. e.g.:
+  - ability to add filtering rules and applying filter rules to already collected results.
+  - ability to install the extension inline: https://developer.chrome.com/webstore/inline_installation
+  - extension button that saves all tabs at once: chrome.tabs.query({}, function(tabs) { /* blah */ } );
+  - https://developers.google.com/gmail/api/guides/push for storing messages in Perkeep
+  - Chrome history search returns history items from all signed in instances. chrome.history.search({startTime: 1520257369630.394, maxResults: 100}, function(data) {})
+    One implementation idea would be to keep track of an epoch
+
+
+---
+Tue Mar 6:
+
+- Add context menus for storing fullpage and capturing visible.
+- should the image thumb be updated on each visit? Or manually controlled? Should it be a setting?
+    - We probably shouldn't replace images that have already been saved for pages, so probably capturing every visit is problematic. But we should still update the last visited timestamp. So: experiement with updating image only if it doesn't already contain an image. Keep updating visited date though but convert to readable datestamp.
+- Add context menu for storing images or text from the page. When this happens, we should add a referrer permanode reference to the image or text permanode at least. We could experiment with making the text or image a camliMember of the parent page permanode.
+- Match folder structure with top level domains. i.e. nytimes.com would be a top-level permanode with nytimes.com/page being a camliMember of the nytimes.com permanode.
+- Always put the screenshot in camliContentImage. Preserve camliContent for the fullpage mht.
+
+- Save camliContent (mht) to /tmp and use Chrome Headless to take a screenshot of the page.
+---
+
+Perkeep (possible) bugs:
+- camget wholeref sha seems to fail with "file does not exist" but using the download option from the web UI works fine.
+- https://github.com/perkeep/perkeep/issues/988 - Run importers as apps
+- https://github.com/perkeep/perkeep/issues/1005 - importers: provide default importer client IDs & secrets
+
+fullpage screenshots:
+$width = $(document).width();
+$height = $(document).height();
+/path/to/chrome --headless --disable-gpu --hide-scrollbars --screenshot --window-size=$width,$height /tmp/webpage.mht
+
+thumbnail screenshots (approximate size of a letterhead):
+$width = 1280;
+$height = 1696;
+/path/to/chrome --headless --disable-gpu --hide-scrollbars --screenshot --window-size=$width,$height /tmp/webpage.mht
+Only need "disable-gpu" on Windows. It prevents some current issues as a workaround for missing libosmesa.so (see: https://bugs.chromium.org/p/chromium/issues/detail?id=737678)
+
+The settings for width and height of thumbnails could be configured.
+
+For finding where chrome is installed: https://github.com/substack/browser-launcher
+
+
+opening tab from notification: Check out this: https://stackoverflow.com/questions/25933556/chrome-extension-open-new-tab-when-browser-opened-in-background-mac
+
+Loading synced history from other devices:
+https://stackoverflow.com/questions/37552028/invisible-tabs-in-chrome-extension
+
+Another option to run periodically and retrieve synced browsing history:
+You can run Chrome with extensions headless using Xvfb. This keeps the profile associated with sync installed (not the case with headless) and allows running the browser with the extension installed.
+e.g.:
+    Install Xvfb. On Fedora sudo dnf install xorg-x11-server-Xvfb
+    xvfb-run google-chrome --remote-debugging-port=9222 --disable-gpu  https://www.google.com
+    # run a wait (callbacks possible?) until loaded extension captures page.
+
+https://github.com/perkeep/perkeep/issues/427 - Chrome browser sync importer
+
+email importer: https://github.com/bradfitz/go-smtpd
+
+browsing history should be stored as such:
+'<importer_acc>/<year>/<month>/<day>' directory structure to avoid large directories while providing some use for the UI and mount.
+
+Also: Checkout how far Brave Sync has come (still not implemented on mobile though). They plan to support a custom sync server in the future: https://github.com/brave/sync
+
+Firefox would offer a way to do this today with:
+https://mozilla-services.readthedocs.io/en/latest/howtos/run-sync-1.5.html
