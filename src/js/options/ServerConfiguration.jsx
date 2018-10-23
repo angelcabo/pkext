@@ -1,6 +1,5 @@
 import React from "react";
 import {hot} from "react-hot-loader";
-import Perkeep from '../perkeep/manager.js'
 
 class ServerConfiguration extends React.Component {
 
@@ -8,6 +7,8 @@ class ServerConfiguration extends React.Component {
     super(props);
     this.state = {
       statusMessage: '',
+      user: '',
+      password: '',
       serverUrl: '',
       rootPermanodeName: '',
       rootPermanodeRef: ''
@@ -59,8 +60,19 @@ class ServerConfiguration extends React.Component {
 
   setRootPermanode() {
     let self = this;
-    return Perkeep.discover({serverUrl: self.state.serverUrl, user: 'user', pass: 'pass'})
-      .then(function (server) {
+
+    let perkeep = Perkeep({
+      host: self.state.serverUrl,
+      user: self.state.user,
+      password: self.state.password
+    });
+
+    return perkeep.discover()
+      .then(function (discoveryConfig) {
+        perkeep.discoveryConfig = discoveryConfig;
+        return perkeep.upload(data);
+      })
+      .then(function () {
         return server.getRootPermanode(self.state.rootPermanodeName);
       })
       .then(function (permanode) {
@@ -73,7 +85,6 @@ class ServerConfiguration extends React.Component {
 
   saveOptions() {
     this.setStatus('Saving...');
-    console.log('made it here');
     return new Promise(function (resolve, reject) {
       chrome.storage.sync.set({
         serverUrl: this.state.serverUrl,
@@ -89,6 +100,18 @@ class ServerConfiguration extends React.Component {
     }.bind(this));
   }
 
+  handleUserChange(event) {
+    this.setState({
+      user: event.target.value
+    });
+  }
+
+  handlePasswordChange(event) {
+    this.setState({
+      password: event.target.value
+    });
+  }
+
   handleUrlChange(event) {
     this.setState({
       serverUrl: event.target.value
@@ -102,19 +125,21 @@ class ServerConfiguration extends React.Component {
   }
 
   onFinish() {
+    let self = this;
     this.setStatus('Options saved!');
     setTimeout(function () {
-      this.setStatus('');
+      self.setStatus('');
     }.bind(this), 1500)
   }
 
   handleOnSubmit(event) {
     event.preventDefault();
+    let self = this;
     this.setRootPermanode()
       .then(this.saveOptions)
       .then(this.onFinish)
       .catch(function (error) {
-        this.setStatus(error.message);
+        self.setStatus(error.message);
       }.bind(this));
   }
 
@@ -125,6 +150,12 @@ class ServerConfiguration extends React.Component {
         <form id={'options-form'} onSubmit={this.handleOnSubmit}>
           <label htmlFor="serverUrl">Server URL</label>
           <input id={'serverUrl'} type={'text'} value={this.state.serverUrl} onChange={this.handleUrlChange}/>
+          <br/>
+          <label htmlFor="user">User</label>
+          <input id={'user'} type={'text'} value={this.state.user} onChange={this.handleUserChange}/>
+          <br/>
+          <label htmlFor="password">Password</label>
+          <input id={'password'} type={'text'} value={this.state.password} onChange={this.handlePasswordChange}/>
 
           <br/>
 

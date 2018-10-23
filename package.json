@@ -9,14 +9,11 @@
     "dev": "node dev.js"
   },
   "dependencies": {
-    "react": "^16.4.0",
-    "react-dom": "^16.4.0",
     "axios": "^0.18.0",
-    "stampit": "^4.1.2",
-    "@stamp/required": "^1.0.1",
+    "perkeep": "../perkeepjs/",
     "qs": "^6.5.2",
-    "crypto-js": "^3.1.9-1",
-    "form-data": "^2.3.2"
+    "react": "^16.4.0",
+    "react-dom": "^16.4.0"
   },
   "devDependencies": {
     "babel-core": "^6.17.0",
